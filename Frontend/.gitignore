@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# Package manager and build caches
+.pnpm-store/
+.vite/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
