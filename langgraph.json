@@ -1,14 +1,12 @@
 {
   "$schema": "https://langgra.ph/schema.json",
   "dependencies": [
-    "./Backend"
+    "./backend"
   ],
   "graphs": {
-    "assistant": "./Backend/src/big_bear_ai/graphs/assistant.py:create_graph",
-    "management": "./Backend/src/big_bear_ai/graphs/management.py:graph"
+    "assistant": "./backend/src/big_bear_ai/graphs/assistant.py:create_graph",
+    "management": "./backend/src/big_bear_ai/graphs/management.py:graph"
   },
-  "env": ".env",
-  "python_version": "3.11",
   "http": {
     "cors": {
       "allow_origins": [

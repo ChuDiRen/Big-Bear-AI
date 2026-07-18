@@ -24,6 +24,13 @@ def test_start_script_launches_both_development_servers_and_records_ownership() 
     assert "New-Item -ItemType Directory -Path $langGraphRuntime -Force" in script
 
 
+def test_postgres_launcher_uses_local_python_postgres_runtime() -> None:
+    script = (ROOT / "start_postgres.py").read_text(encoding="utf-8")
+
+    assert '"LANGGRAPH_RUNTIME_EDITION": "postgres_local"' in script
+    assert 'version("langgraph-api") != "0.11.1"' in script
+
+
 def test_stop_script_uses_recorded_pids_instead_of_killing_port_owners() -> None:
     script = (ROOT / "stop.ps1").read_text(encoding="utf-8")
 

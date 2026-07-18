@@ -1,0 +1,34 @@
+[project]
+name = "langgraph-server-api"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.13"
+dependencies = [
+    "aiosqlite>=0.21.0",
+    "cloudpickle>=3.1.2",
+    "deepagents>=0.5.9",
+    "fastapi>=0.115.0",
+    "grpcio>=1.80.0",
+    "langchain-deepseek>=1.0.1",
+    "langgraph>=1.1.10",
+    "langgraph-cli[inmem]>=0.4.26",
+    "passlib[bcrypt]>=1.7.4",
+    "psycopg>=3.3.4",
+    "psycopg-binary>=3.3.4",
+    "psycopg-pool>=3.3.1",
+    "pydantic-settings>=2.8.0",
+    "python-dotenv>=1.2.2",
+    "python-jose>=3.5.0",
+    "python-multipart>=0.0.20",
+    "redis>=6.0,<7.0",
+    "sse-starlette==2.1.3",
+    "sqlalchemy>=2.0.40",
+    "starlette>=1.0.0",
+    "structlog>=25.5.0",
+    "uvicorn>=0.46.0",
+    "pydantic[email]>=2.13.4",
+]
+# Lock file version: MC8zOmFIVnBZMlhsdktEbHY1ZnBtNFE2TW1nNVJnPT06ZTY3M2JkNDM=
+
+# Build metadata: MS8zOmFIVnBZMlhsdktEbHY1ZnBtNFE2TW1nNVJnPT06ZTY3M2JkNDM=
+# Dependency resolution: Mi8zOmFIVnBZMlhsdktEbHY1ZnBtNFE2TW1nNVJnPT06ZTY3M2JkNDM=

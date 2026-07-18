@@ -1,90 +1,31 @@
 # Big Bear AI
 
-Big Bear AI is a local AI testing workspace. The Vue frontend talks only to a
-LangGraph Agent Server, which exports two graphs:
-
-- `assistant`: a streaming Deep Agent created with `deepagents.create_deep_agent`;
-- `management`: deterministic resource, knowledge, MCP, and plugin operations.
-
-Application resources persist in `runtime/big-bear.db`. LangGraph's development
-thread/run storage remains in-memory by design.
-
-## Requirements
-
-- Python 3.11+
-- Node.js 20+ and pnpm
-- a provider API key for real assistant responses
-
-## Install
+## 安装
 
 ```powershell
-python -m venv Backend\.venv
-Backend\.venv\Scripts\python.exe -m pip install -e "Backend[dev]"
-pnpm --dir Frontend install
-Copy-Item .env.example .env
+uv sync
 ```
 
-Set a valid provider key in `.env`. The default model uses
-`GOOGLE_GENERATIVE_AI_API_KEY`; change `BIG_BEAR_MODEL` for another LangChain
-model identifier.
+## PostgreSQL 运行时
 
-## Run
+- `storage/migrations/` 是 LangGraph PostgreSQL 运行时的建表与升级脚本，必须保留。
+- `openapi.json` 是 API 描述文件，必须与运行时文件一同保留。
+- 在 `langgraph.json` 的 `graphs` 中配置可用智能体。
 
-Backend only, using the requested startup command:
+启动持久化服务前，请在当前终端设置连接串。不要将真实密钥、密码或连接地址提交到仓库。
 
 ```powershell
-Backend\.venv\Scripts\langgraph.exe dev --no-browser
+$env:BIG_BEAR_POSTGRES_URI = "postgresql://<用户>:<密码>@<主机>:5432/<数据库>"
+$env:BIG_BEAR_REDIS_URI = "redis://:<密码>@<主机>:6379/0"
+python .\start_postgres.py
 ```
 
-The graphs are available at `http://127.0.0.1:2024`, with API documentation at
-`http://127.0.0.1:2024/docs`.
+未设置环境变量时，启动器会使用本机开发默认值：PostgreSQL `postgresql://postgres@127.0.0.1:5432/big_bear_ai` 与 Redis `redis://127.0.0.1:6379/0`。
 
-Complete development stack:
+## 独立认证服务
+
+根目录 `src/app/main.py` 是独立的注册与登录 API，可按需单独运行：
 
 ```powershell
-.\start.ps1
+python .\src\app\main.py
 ```
-
-Open `http://127.0.0.1:5173`. The script starts `langgraph dev` and Vite in
-hidden processes, waits for both services, and records process ownership under
-`runtime/`. Stop only those recorded processes with:
-
-```powershell
-.\stop.ps1
-```
-
-Custom ports are supported:
-
-```powershell
-.\start.ps1 -BackendPort 2025 -FrontendPort 5174
-```
-
-## Verify
-
-```powershell
-Backend\.venv\Scripts\python.exe -m pytest Backend\tests -q
-pnpm --dir Frontend test -- --run
-pnpm --dir Frontend build
-Backend\.venv\Scripts\python.exe Backend\scripts\smoke_langgraph.py
-Backend\.venv\Scripts\python.exe Backend\scripts\smoke_assistant.py
-```
-
-## MCP Secrets
-
-MCP environment variables and HTTP headers accept environment references only:
-
-```json
-{
-  "Authorization": "$env:GITHUB_TOKEN"
-}
-```
-
-Literal secrets are rejected. Only the variable name is stored and returned.
-
-## Data
-
-- SQLite database: `runtime/big-bear.db`
-- uploaded files: `runtime/uploads/`
-- local service logs and PID records: `runtime/`
-
-These paths and `.env` are excluded from Git.
