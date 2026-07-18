@@ -1,2 +1,18 @@
 # Local development process state and logs
 runtime/
+
+# Local secrets and Python build/test artifacts
+.env
+.venv/
+**/__pycache__/
+*.py[cod]
+.pytest_cache/
+Backend/.venv/
+.langgraph_api/
+Backend/src/*.egg-info/
+
+# Frontend generated artifacts
+Frontend/coverage/
+Frontend/playwright-report/
+Frontend/test-results/
+output/playwright/

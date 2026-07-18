@@ -1,26 +1,132 @@
 [CmdletBinding()]
 param(
     [ValidateRange(1, 65535)]
-    [int]$Port = 5173
+    [int]$FrontendPort = 5173,
+
+    [ValidateRange(1, 65535)]
+    [int]$BackendPort = 2024
 )
 
+$ErrorActionPreference = 'Stop'
+$runtime = Join-Path $PSScriptRoot 'runtime'
 $frontend = Join-Path $PSScriptRoot 'Frontend'
+$langGraphRuntime = Join-Path $PSScriptRoot '.langgraph_api'
+$backendPidFile = Join-Path $runtime 'backend.pid'
+$frontendPidFile = Join-Path $runtime 'frontend.pid'
+$langGraphConfig = Join-Path $PSScriptRoot 'langgraph.json'
 
-if (-not (Test-Path -LiteralPath $frontend -PathType Container)) {
-    throw "找不到前端目录：$frontend"
+function Assert-Command([string]$Name) {
+    if (-not (Get-Command $Name -ErrorAction SilentlyContinue)) {
+        throw "Required command is not available: $Name"
+    }
 }
 
-# 检查端口是否已被占用
-$existing = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1
-if ($null -ne $existing) {
-    Write-Host "端口 $Port 已被进程 $($existing.OwningProcess) 占用，请先执行 stop.ps1 或更换端口。"
-    return
+function Assert-PortFree([int]$Port) {
+    $listener = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue |
+        Select-Object -First 1
+    if ($null -ne $listener) {
+        throw "Port $Port is already in use by process $($listener.OwningProcess)."
+    }
 }
 
-# 新窗口启动 vite，日志实时可见
-Start-Process -FilePath 'powershell.exe' `
-    -ArgumentList '-NoProfile', '-Command', "Set-Location '$frontend'; pnpm exec vite --host 127.0.0.1 --port $Port" `
-    -WindowStyle Normal
+function Save-ProcessRecord([System.Diagnostics.Process]$Process, [string]$Path) {
+    @{
+        Pid = $Process.Id
+        StartTimeUtcTicks = $Process.StartTime.ToUniversalTime().Ticks
+    } | ConvertTo-Json -Compress | Set-Content -LiteralPath $Path -Encoding utf8
+}
 
-Write-Host "前端服务已在新窗口启动：http://127.0.0.1:$Port"
-Write-Host "执行 stop.ps1 可停止服务。"
+function Stop-OwnedProcess([string]$Path) {
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        return
+    }
+    try {
+        $record = Get-Content -Raw -LiteralPath $Path | ConvertFrom-Json
+        $process = Get-Process -Id ([int]$record.Pid) -ErrorAction SilentlyContinue
+        if ($null -ne $process) {
+            $tickDelta = [Math]::Abs(
+                $process.StartTime.ToUniversalTime().Ticks - [long]$record.StartTimeUtcTicks
+            )
+            $delta = [TimeSpan]::FromTicks($tickDelta).TotalSeconds
+            if ($delta -lt 2) {
+                & taskkill.exe /PID $process.Id /T /F | Out-Null
+            }
+        }
+    }
+    finally {
+        Remove-Item -LiteralPath $Path -Force -ErrorAction SilentlyContinue
+    }
+}
+
+function Reset-LangGraphRuntime() {
+    if (-not (Test-Path -LiteralPath $langGraphRuntime)) {
+        return
+    }
+    $rootPath = [System.IO.Path]::GetFullPath($PSScriptRoot)
+    $runtimePath = [System.IO.Path]::GetFullPath($langGraphRuntime)
+    if (-not $runtimePath.StartsWith($rootPath, [System.StringComparison]::OrdinalIgnoreCase)) {
+        throw "Refusing to remove LangGraph runtime outside workspace: $runtimePath"
+    }
+    Remove-Item -LiteralPath $langGraphRuntime -Recurse -Force
+}
+
+function Wait-Endpoint([string]$Url, [int]$TimeoutSeconds = 45) {
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    do {
+        try {
+            $response = Invoke-WebRequest -Uri $Url -UseBasicParsing -TimeoutSec 2
+            if ($response.StatusCode -ge 200 -and $response.StatusCode -lt 500) {
+                return
+            }
+        }
+        catch {
+            Start-Sleep -Milliseconds 250
+        }
+    } while ((Get-Date) -lt $deadline)
+    throw "Timed out waiting for $Url"
+}
+
+Assert-Command 'pnpm'
+New-Item -ItemType Directory -Path $runtime -Force | Out-Null
+Stop-OwnedProcess $frontendPidFile
+Stop-OwnedProcess $backendPidFile
+Reset-LangGraphRuntime
+New-Item -ItemType Directory -Path $langGraphRuntime -Force | Out-Null
+Assert-PortFree $BackendPort
+Assert-PortFree $FrontendPort
+
+$venvLangGraph = Join-Path $PSScriptRoot 'Backend\.venv\Scripts\langgraph.exe'
+$backendFile = if (Test-Path -LiteralPath $venvLangGraph -PathType Leaf) { $venvLangGraph } else { 'langgraph' }
+if ($backendFile -eq 'langgraph') {
+    Assert-Command 'langgraph'
+}
+
+try {
+    $backend = Start-Process -FilePath $backendFile `
+        -WorkingDirectory $PSScriptRoot `
+        -ArgumentList @('dev', '--no-browser', '--host', '127.0.0.1', '--port', $BackendPort, '--config', $langGraphConfig) `
+        -WindowStyle Hidden -PassThru `
+        -RedirectStandardOutput (Join-Path $runtime 'backend.out.log') `
+        -RedirectStandardError (Join-Path $runtime 'backend.err.log')
+    Save-ProcessRecord $backend $backendPidFile
+    Wait-Endpoint "http://127.0.0.1:$BackendPort/docs"
+
+    $env:VITE_LANGGRAPH_PROXY_TARGET = "http://127.0.0.1:$BackendPort"
+    $frontendProcess = Start-Process -FilePath 'pnpm' `
+        -WorkingDirectory $frontend `
+        -ArgumentList @('exec', 'vite', '--host', '127.0.0.1', '--port', $FrontendPort) `
+        -WindowStyle Hidden -PassThru `
+        -RedirectStandardOutput (Join-Path $runtime 'frontend.out.log') `
+        -RedirectStandardError (Join-Path $runtime 'frontend.err.log')
+    Save-ProcessRecord $frontendProcess $frontendPidFile
+    Wait-Endpoint "http://127.0.0.1:$FrontendPort/"
+}
+catch {
+    Stop-OwnedProcess $frontendPidFile
+    Stop-OwnedProcess $backendPidFile
+    throw
+}
+
+Write-Host "Big Bear AI is ready: http://127.0.0.1:$FrontendPort"
+Write-Host "LangGraph API docs: http://127.0.0.1:$BackendPort/docs"
+Write-Host "Run .\stop.ps1 to stop both processes."

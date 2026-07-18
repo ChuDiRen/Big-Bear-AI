@@ -1,40 +1,33 @@
 <template>
-  <div class="main-content">
-    <header class="page-header">
-      <h1 class="page-title">Prompt 库</h1>
-      <p class="page-subtitle">高效的提示词模板集合</p>
-      <div class="header-actions">
-        <div class="search-bar">
-          <i class="ph ph-magnifying-glass"></i>
-          <input type="text" placeholder="搜索 Prompt...">
-        </div>
-        <button class="btn-primary">
-          <i class="ph ph-plus"></i>
-          新建 Prompt
-        </button>
-      </div>
-    </header>
-
-    <div class="card-grid">
-      <UnifiedCard 
-        v-for="prompt in prompts" 
-        :key="prompt.id" 
-        :item="prompt" 
-        :options="{ 
-          badgeText: prompt.tags[0],
-          showIcon: true, 
-          iconName: prompt.icon,
-          extraBadges: prompt.tags.slice(1)
-        }"
-      />
-    </div>
-  </div>
+  <ResourceCatalogPage
+    resource="prompt"
+    title="Prompt 库"
+    subtitle="创建和复用测试提示词模板"
+    action-label="新建 Prompt"
+    search-placeholder="搜索 Prompt..."
+    :fields="fields"
+    :card-options="{ showIcon: true, iconName: 'file-text' }"
+    use-label="在对话中使用"
+    @use="usePrompt"
+  />
 </template>
 
 <script setup>
-import { computed } from 'vue';
-import MockData from '../data/data';
-import UnifiedCard from '../components/UnifiedCard.vue';
+import { useRouter } from 'vue-router'
 
-const prompts = computed(() => MockData.prompts);
+import ResourceCatalogPage from '../components/ResourceCatalogPage.vue'
+
+
+const router = useRouter()
+const fields = [
+  { key: 'title', label: '名称', required: true, placeholder: '例如：生成接口测试' },
+  { key: 'description', label: '描述', type: 'textarea' },
+  { key: 'template', label: '提示词模板', type: 'textarea', required: true },
+  { key: 'variables', label: '变量', type: 'list', placeholder: 'endpoint, schema' },
+  { key: 'tags', label: '标签', type: 'list', placeholder: 'API, 代码生成' },
+]
+
+function usePrompt(prompt) {
+  router.push({ name: 'Home', query: { prompt_id: prompt.id } })
+}
 </script>

@@ -1,11 +1,12 @@
 import { createRouter, createWebHistory } from 'vue-router';
-import Home from '../views/Home.vue';
-import Rules from '../views/Rules.vue';
-import Agents from '../views/Agents.vue';
-import Knowledge from '../views/Knowledge.vue';
-import Plugins from '../views/Plugins.vue';
-import MCP from '../views/MCP.vue';
-import Prompt from '../views/Prompt.vue';
+
+const Home = () => import('../views/Home.vue');
+const Rules = () => import('../views/Rules.vue');
+const Agents = () => import('../views/Agents.vue');
+const Knowledge = () => import('../views/Knowledge.vue');
+const Plugins = () => import('../views/Plugins.vue');
+const MCP = () => import('../views/MCP.vue');
+const Prompt = () => import('../views/Prompt.vue');
 
 const routes = [
   { path: '/', name: 'Home', component: Home },

@@ -1,0 +1,33 @@
+{
+  "$schema": "https://langgra.ph/schema.json",
+  "dependencies": [
+    "./Backend"
+  ],
+  "graphs": {
+    "assistant": "./Backend/src/big_bear_ai/graphs/assistant.py:create_graph",
+    "management": "./Backend/src/big_bear_ai/graphs/management.py:graph"
+  },
+  "env": ".env",
+  "python_version": "3.11",
+  "http": {
+    "cors": {
+      "allow_origins": [
+        "http://127.0.0.1:5173",
+        "http://localhost:5173"
+      ],
+      "allow_methods": [
+        "GET",
+        "POST",
+        "PUT",
+        "PATCH",
+        "DELETE",
+        "OPTIONS"
+      ],
+      "allow_headers": [
+        "Content-Type",
+        "Authorization"
+      ],
+      "allow_credentials": true
+    }
+  }
+}

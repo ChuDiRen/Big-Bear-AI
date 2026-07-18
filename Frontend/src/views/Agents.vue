@@ -1,39 +1,36 @@
 <template>
-  <div class="main-content">
-    <header class="page-header">
-      <h1 class="page-title">智能体广场</h1>
-      <p class="page-subtitle">发现并使用强大的AI智能体</p>
-      <div class="header-actions">
-        <div class="search-bar">
-          <i class="ph ph-magnifying-glass"></i>
-          <input type="text" placeholder="搜索智能体...">
-        </div>
-        <button class="btn-primary">
-          <i class="ph ph-plus"></i>
-          创建智能体
-        </button>
-      </div>
-    </header>
-
-    <div class="card-grid">
-      <UnifiedCard 
-        v-for="agent in agents" 
-        :key="agent.id" 
-        :item="agent" 
-        :options="{ 
-          badgeText: agent.type,
-          showIcon: true, 
-          iconName: agent.icon 
-        }"
-      />
-    </div>
-  </div>
+  <ResourceCatalogPage
+    resource="agent"
+    title="智能体广场"
+    subtitle="发现、创建并配置测试智能体"
+    action-label="创建智能体"
+    search-placeholder="搜索智能体..."
+    :fields="fields"
+    :card-options="{ showIcon: true, iconName: 'robot' }"
+    use-label="使用智能体"
+    @use="useAgent"
+  />
 </template>
 
 <script setup>
-import { computed } from 'vue';
-import MockData from '../data/data';
-import UnifiedCard from '../components/UnifiedCard.vue';
+import { useRouter } from 'vue-router'
 
-const agents = computed(() => MockData.agents);
+import ResourceCatalogPage from '../components/ResourceCatalogPage.vue'
+
+
+const router = useRouter()
+const fields = [
+  { key: 'name', label: '名称', required: true, placeholder: '例如：API 测试专家' },
+  { key: 'description', label: '描述', type: 'textarea' },
+  { key: 'instructions', label: '系统指令', type: 'textarea', required: true },
+  { key: 'category', label: '分类', default: '自定义' },
+  { key: 'model_override', label: '模型覆盖', placeholder: '留空使用默认模型' },
+  { key: 'allowed_rule_ids', label: '允许的规则 ID', type: 'list' },
+  { key: 'allowed_plugin_ids', label: '允许的插件 ID', type: 'list' },
+  { key: 'allowed_document_ids', label: '允许的文档 ID', type: 'list' },
+]
+
+function useAgent(agent) {
+  router.push({ name: 'Home', query: { agent_id: agent.id } })
+}
 </script>

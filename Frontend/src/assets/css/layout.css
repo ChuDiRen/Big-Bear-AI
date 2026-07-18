@@ -134,3 +134,67 @@
 .btn-primary:hover {
     background-color: #2563EB;
 }
+
+@media (max-width: 760px) {
+    .app-container {
+        flex-direction: column;
+        height: 100dvh;
+        overflow: hidden;
+    }
+
+    .sidebar {
+        width: 100%;
+        padding: 8px 10px;
+        border-right: 0;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .logo-area {
+        padding: 4px 6px 8px;
+        margin-bottom: 0;
+        font-size: 0.9rem;
+    }
+
+    .nav-menu {
+        flex-direction: row;
+        gap: 4px;
+        overflow-x: auto;
+        overscroll-behavior-x: contain;
+        scrollbar-width: thin;
+    }
+
+    .nav-item {
+        flex: 0 0 auto;
+        gap: 6px;
+        padding: 7px 10px;
+        font-size: 0.8rem;
+    }
+
+    .nav-item i {
+        font-size: 1rem;
+    }
+
+    .main-content {
+        width: 100%;
+        min-width: 0;
+        padding: 18px 12px;
+    }
+
+    .header-actions {
+        align-items: stretch;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .search-bar {
+        width: 100%;
+    }
+
+    .btn-primary {
+        justify-content: center;
+    }
+
+    .card-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
