@@ -1,5 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router';
 
+import { isAuthenticated } from '../api/auth.js';
+
+const Auth = () => import('../views/Auth.vue');
 const Home = () => import('../views/Home.vue');
 const Rules = () => import('../views/Rules.vue');
 const Agents = () => import('../views/Agents.vue');
@@ -9,6 +12,7 @@ const MCP = () => import('../views/MCP.vue');
 const Prompt = () => import('../views/Prompt.vue');
 
 const routes = [
+  { path: '/auth', name: 'Auth', component: Auth, meta: { public: true } },
   { path: '/', name: 'Home', component: Home },
   { path: '/index.html', redirect: '/' }, // Handle legacy link
   { path: '/rules', name: 'Rules', component: Rules },
@@ -28,6 +32,13 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes,
+});
+
+router.beforeEach((to) => {
+  if (to.meta.public) {
+    return isAuthenticated.value ? '/' : true;
+  }
+  return isAuthenticated.value ? true : { name: 'Auth', query: { redirect: to.fullPath } };
 });
 
 export default router;

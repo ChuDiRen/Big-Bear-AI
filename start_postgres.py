@@ -20,10 +20,10 @@ BACKEND = ROOT / "backend"
 BACKEND_SRC = BACKEND / "src"
 VENV_PYTHON = BACKEND / ".venv" / "Scripts" / "python.exe"
 SERVER_HOST = "0.0.0.0"
-SERVER_PORT = 2026
+SERVER_PORT = int(os.environ.get("BIG_BEAR_SERVER_PORT", "2026"))
 
-DEFAULT_POSTGRES_URI = "postgresql://postgres@127.0.0.1:5432/big_bear_ai"
-DEFAULT_REDIS_URI = "redis://127.0.0.1:6379/0"
+DEFAULT_POSTGRES_URI = "postgresql://postgres@192.168.111.128:5432/big_bear_ai"
+DEFAULT_REDIS_URI = "redis://192.168.111.128:6379/0"
 
 # Windows 上 psycopg 异步模式不兼容默认的 ProactorEventLoop，必须切到 SelectorEventLoop
 if sys.platform == "win32":
@@ -148,9 +148,23 @@ def _resolve_graph_source(source: str) -> str:
     return f"{resolved_path.resolve().as_posix()}:{export}"
 
 
+def load_local_environment() -> None:
+    from dotenv import load_dotenv
+
+    load_dotenv(ROOT / ".env", override=False)
+
+
 def resolve_connection_uris() -> tuple[str, str]:
-    postgres_uri = os.environ.get("BIG_BEAR_POSTGRES_URI") or DEFAULT_POSTGRES_URI
-    redis_uri = os.environ.get("BIG_BEAR_REDIS_URI") or DEFAULT_REDIS_URI
+    postgres_uri = (
+        os.environ.get("BIG_BEAR_POSTGRES_URI")
+        or os.environ.get("DATABASE_URI")
+        or DEFAULT_POSTGRES_URI
+    )
+    redis_uri = (
+        os.environ.get("BIG_BEAR_REDIS_URI")
+        or os.environ.get("REDIS_URI")
+        or DEFAULT_REDIS_URI
+    )
     return postgres_uri, redis_uri
 
 
@@ -185,9 +199,11 @@ def ensure_database(postgres_uri: str) -> None:
 
 def setup_environment() -> None:
     """设置 PostgreSQL 持久化运行时所需环境变量。"""
+    load_local_environment()
     langgraph_config = load_langgraph_config()
     graphs = langgraph_config["graphs"]
     auth = langgraph_config.get("auth")
+    http = langgraph_config.get("http")
 
     postgres_uri, redis_uri = resolve_connection_uris()
     migrations_path = str(
@@ -214,6 +230,7 @@ def setup_environment() -> None:
         "ALLOW_PRIVATE_NETWORK": "true",
         "LANGGRAPH_UI_BUNDLER": "true",
         "LANGGRAPH_RUNTIME_EDITION": "postgres_local",
+        "BIG_BEAR_RUNTIME": "postgres",
         "LANGSMITH_LANGGRAPH_API_VARIANT": "local_dev",
         "LANGGRAPH_DISABLE_FILE_PERSISTENCE": "false",
         "LANGGRAPH_ALLOW_BLOCKING": "true",
@@ -224,6 +241,7 @@ def setup_environment() -> None:
         # Graphs and auth come only from langgraph.json.
         "LANGSERVE_GRAPHS": json.dumps(graphs),
         "LANGGRAPH_AUTH": json.dumps(auth) if auth is not None else None,
+        "LANGGRAPH_HTTP": json.dumps(http) if http is not None else None,
 
         # Worker configuration
         "N_JOBS_PER_WORKER": "10",

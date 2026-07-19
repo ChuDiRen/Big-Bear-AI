@@ -13,7 +13,11 @@ def test_root_langgraph_config_exports_both_graphs() -> None:
         "assistant": "./backend/src/big_bear_ai/graphs/assistant.py:create_graph",
         "management": "./backend/src/big_bear_ai/graphs/management.py:graph",
     }
-    assert "env" not in config
+    assert config["auth"] == {
+        "path": "big_bear_ai.auth.langgraph:auth",
+        "disable_studio_auth": True,
+    }
+    assert config["http"]["app"] == "big_bear_ai.auth.http:app"
     assert set(config["http"]["cors"]["allow_origins"]) == {
         "http://127.0.0.1:5173",
         "http://localhost:5173",

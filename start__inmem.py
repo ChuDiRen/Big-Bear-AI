@@ -17,7 +17,7 @@ BACKEND = ROOT / "backend"
 BACKEND_SRC = BACKEND / "src"
 VENV_PYTHON = BACKEND / ".venv" / "Scripts" / "python.exe"
 HOST = "127.0.0.1"
-PORT = 2026
+PORT = int(os.environ.get("BIG_BEAR_SERVER_PORT", "2026"))
 
 
 def ensure_backend_venv() -> None:
@@ -103,6 +103,9 @@ def _resolve_graph_source(source: str) -> str:
 
 
 def configure_environment() -> None:
+    from dotenv import load_dotenv
+
+    load_dotenv(ROOT / ".env", override=False)
     if not BACKEND_SRC.is_dir():
         raise RuntimeError(f"找不到后端源码目录：{BACKEND_SRC}")
 
@@ -140,8 +143,10 @@ def configure_environment() -> None:
     langgraph_config = load_langgraph_config()
     graphs = langgraph_config["graphs"]
     auth = langgraph_config.get("auth")
+    http = langgraph_config.get("http")
 
     os.environ.pop("LANGGRAPH_AUTH", None)
+    os.environ.pop("LANGGRAPH_HTTP", None)
     os.environ.update(
         {
             "DATABASE_URI": ":memory:",
@@ -150,6 +155,7 @@ def configure_environment() -> None:
             "ALLOW_PRIVATE_NETWORK": "true",
             "LANGGRAPH_UI_BUNDLER": "true",
             "LANGGRAPH_RUNTIME_EDITION": "inmem",
+            "BIG_BEAR_RUNTIME": "inmem",
             "LANGSMITH_LANGGRAPH_API_VARIANT": "local_dev",
             "LANGGRAPH_DISABLE_FILE_PERSISTENCE": "true",
             "LANGGRAPH_ALLOW_BLOCKING": "true",
@@ -159,6 +165,11 @@ def configure_environment() -> None:
             **(
                 {"LANGGRAPH_AUTH": json.dumps(auth)}
                 if auth is not None
+                else {}
+            ),
+            **(
+                {"LANGGRAPH_HTTP": json.dumps(http)}
+                if http is not None
                 else {}
             ),
         }

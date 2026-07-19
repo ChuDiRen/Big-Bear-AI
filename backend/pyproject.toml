@@ -8,6 +8,11 @@ version = "0.1.0"
 description = "LangGraph backend for Big Bear AI"
 requires-python = ">=3.11,<4"
 dependencies = [
+  "bcrypt>=4.0,<5",
+  "fastapi>=0.115,<1",
+  "pydantic[email]>=2.0,<3",
+  "python-dotenv>=1.0,<2",
+  "python-jose>=3.3,<4",
   "deepagents>=0.6.12,<0.7",
   "jsonschema>=4.24,<5",
   "langchain>=1.3.13,<2",

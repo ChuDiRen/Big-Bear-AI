@@ -7,7 +7,12 @@
     "assistant": "./backend/src/big_bear_ai/graphs/assistant.py:create_graph",
     "management": "./backend/src/big_bear_ai/graphs/management.py:graph"
   },
+  "auth": {
+    "path": "big_bear_ai.auth.langgraph:auth",
+    "disable_studio_auth": true
+  },
   "http": {
+    "app": "big_bear_ai.auth.http:app",
     "cors": {
       "allow_origins": [
         "http://127.0.0.1:5173",

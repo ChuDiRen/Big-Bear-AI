@@ -1,8 +1,13 @@
 <template>
-  <div class="app-container">
-    <Sidebar />
-    <router-view></router-view>
-  </div>
+  <router-view v-slot="{ Component, route }">
+    <div v-if="route.meta.public" class="auth-shell">
+      <component :is="Component" />
+    </div>
+    <div v-else class="app-container">
+      <Sidebar />
+      <component :is="Component" />
+    </div>
+  </router-view>
 </template>
 
 <script setup>

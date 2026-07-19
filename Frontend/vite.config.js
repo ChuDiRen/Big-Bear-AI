@@ -7,7 +7,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api/langgraph': {
-        target: process.env.VITE_LANGGRAPH_PROXY_TARGET ?? 'http://127.0.0.1:2024',
+        target: process.env.VITE_LANGGRAPH_PROXY_TARGET ?? 'http://127.0.0.1:2026',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/langgraph/, ''),
       },

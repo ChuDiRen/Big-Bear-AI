@@ -1,19 +1,23 @@
 [CmdletBinding()]
 param(
+    [ValidateSet('inmem', 'postgres')]
+    [string]$Runtime = 'inmem',
+
     [ValidateRange(1, 65535)]
     [int]$FrontendPort = 5173,
 
     [ValidateRange(1, 65535)]
-    [int]$BackendPort = 2024
+    [int]$BackendPort = 2026
 )
 
 $ErrorActionPreference = 'Stop'
-$runtime = Join-Path $PSScriptRoot 'runtime'
+$runtimeDir = Join-Path $PSScriptRoot 'runtime'
 $frontend = Join-Path $PSScriptRoot 'Frontend'
-$langGraphRuntime = Join-Path $PSScriptRoot '.langgraph_api'
-$backendPidFile = Join-Path $runtime 'backend.pid'
-$frontendPidFile = Join-Path $runtime 'frontend.pid'
-$langGraphConfig = Join-Path $PSScriptRoot 'langgraph.json'
+$backendPidFile = Join-Path $runtimeDir 'backend.pid'
+$frontendPidFile = Join-Path $runtimeDir 'frontend.pid'
+$backendLauncherName = if ($Runtime -eq 'postgres') { 'start_postgres.py' } else { 'start__inmem.py' }
+$backendLauncher = Join-Path $PSScriptRoot $backendLauncherName
+$backendPython = Join-Path $PSScriptRoot 'backend\.venv\Scripts\python.exe'
 
 function Assert-Command([string]$Name) {
     if (-not (Get-Command $Name -ErrorAction SilentlyContinue)) {
@@ -58,18 +62,6 @@ function Stop-OwnedProcess([string]$Path) {
     }
 }
 
-function Reset-LangGraphRuntime() {
-    if (-not (Test-Path -LiteralPath $langGraphRuntime)) {
-        return
-    }
-    $rootPath = [System.IO.Path]::GetFullPath($PSScriptRoot)
-    $runtimePath = [System.IO.Path]::GetFullPath($langGraphRuntime)
-    if (-not $runtimePath.StartsWith($rootPath, [System.StringComparison]::OrdinalIgnoreCase)) {
-        throw "Refusing to remove LangGraph runtime outside workspace: $runtimePath"
-    }
-    Remove-Item -LiteralPath $langGraphRuntime -Recurse -Force
-}
-
 function Wait-Endpoint([string]$Url, [int]$TimeoutSeconds = 45) {
     $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
     do {
@@ -87,37 +79,37 @@ function Wait-Endpoint([string]$Url, [int]$TimeoutSeconds = 45) {
 }
 
 Assert-Command 'pnpm'
-New-Item -ItemType Directory -Path $runtime -Force | Out-Null
+if (-not (Test-Path -LiteralPath $backendPython -PathType Leaf)) {
+    throw "Backend virtual environment Python was not found: $backendPython"
+}
+if (-not (Test-Path -LiteralPath $backendLauncher -PathType Leaf)) {
+    throw "Backend launcher was not found: $backendLauncher"
+}
+
+New-Item -ItemType Directory -Path $runtimeDir -Force | Out-Null
 Stop-OwnedProcess $frontendPidFile
 Stop-OwnedProcess $backendPidFile
-Reset-LangGraphRuntime
-New-Item -ItemType Directory -Path $langGraphRuntime -Force | Out-Null
 Assert-PortFree $BackendPort
 Assert-PortFree $FrontendPort
 
-$venvLangGraph = Join-Path $PSScriptRoot 'Backend\.venv\Scripts\langgraph.exe'
-$backendFile = if (Test-Path -LiteralPath $venvLangGraph -PathType Leaf) { $venvLangGraph } else { 'langgraph' }
-if ($backendFile -eq 'langgraph') {
-    Assert-Command 'langgraph'
-}
-
 try {
-    $backend = Start-Process -FilePath $backendFile `
+    $env:BIG_BEAR_SERVER_PORT = "$BackendPort"
+    $backend = Start-Process -FilePath $backendPython `
         -WorkingDirectory $PSScriptRoot `
-        -ArgumentList @('dev', '--no-browser', '--host', '127.0.0.1', '--port', $BackendPort, '--config', $langGraphConfig) `
+        -ArgumentList @($backendLauncher) `
         -WindowStyle Hidden -PassThru `
-        -RedirectStandardOutput (Join-Path $runtime 'backend.out.log') `
-        -RedirectStandardError (Join-Path $runtime 'backend.err.log')
+        -RedirectStandardOutput (Join-Path $runtimeDir 'backend.out.log') `
+        -RedirectStandardError (Join-Path $runtimeDir 'backend.err.log')
     Save-ProcessRecord $backend $backendPidFile
     Wait-Endpoint "http://127.0.0.1:$BackendPort/docs"
 
     $env:VITE_LANGGRAPH_PROXY_TARGET = "http://127.0.0.1:$BackendPort"
-    $frontendProcess = Start-Process -FilePath 'pnpm' `
+    $frontendProcess = Start-Process -FilePath 'pnpm.cmd' `
         -WorkingDirectory $frontend `
         -ArgumentList @('exec', 'vite', '--host', '127.0.0.1', '--port', $FrontendPort) `
         -WindowStyle Hidden -PassThru `
-        -RedirectStandardOutput (Join-Path $runtime 'frontend.out.log') `
-        -RedirectStandardError (Join-Path $runtime 'frontend.err.log')
+        -RedirectStandardOutput (Join-Path $runtimeDir 'frontend.out.log') `
+        -RedirectStandardError (Join-Path $runtimeDir 'frontend.err.log')
     Save-ProcessRecord $frontendProcess $frontendPidFile
     Wait-Endpoint "http://127.0.0.1:$FrontendPort/"
 }
@@ -127,6 +119,6 @@ catch {
     throw
 }
 
-Write-Host "Big Bear AI is ready: http://127.0.0.1:$FrontendPort"
+Write-Host "Big Bear AI ($Runtime) is ready: http://127.0.0.1:$FrontendPort"
 Write-Host "LangGraph API docs: http://127.0.0.1:$BackendPort/docs"
 Write-Host "Run .\stop.ps1 to stop both processes."

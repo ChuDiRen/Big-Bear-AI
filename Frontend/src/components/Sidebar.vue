@@ -34,11 +34,28 @@
         <span>插件</span>
       </router-link>
     </nav>
+    <div class="account-menu">
+      <span>{{ authSession?.user?.display_name || authSession?.user?.username }}</span>
+      <button type="button" @click="signOut">
+        <i class="ph ph-sign-out" aria-hidden="true"></i>
+        退出登录
+      </button>
+    </div>
   </aside>
 </template>
 
 <script setup>
-// Sidebar logic is mainly handled by router-link active class
+import { useRouter } from 'vue-router'
+
+import { authSession, logout } from '../api/auth.js'
+
+
+const router = useRouter()
+
+function signOut() {
+  logout()
+  router.replace('/auth')
+}
 </script>
 
 <style scoped>

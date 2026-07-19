@@ -18,6 +18,18 @@ describe('LangGraph API adapter', () => {
     )
   })
 
+  test('adds the current session token as a Bearer authorization header', async () => {
+    const { withAuthorization } = await loadApi()
+    const { authSession } = await import('./auth.js')
+    authSession.value = { accessToken: 'jwt-token' }
+
+    const headers = withAuthorization({ Accept: 'application/json' })
+    expect(Object.fromEntries(headers)).toEqual({
+      accept: 'application/json',
+      authorization: 'Bearer jwt-token',
+    })
+  })
+
   test('returns management data from a successful threadless run', async () => {
     const { createLangGraphApi } = await loadApi()
     const client = {

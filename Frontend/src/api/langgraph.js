@@ -1,5 +1,7 @@
 import { Client } from '@langchain/langgraph-sdk'
 
+import { accessToken } from './auth.js'
+
 
 export class ManagementError extends Error {
   constructor(code, message, fields) {
@@ -44,6 +46,10 @@ export function createLangGraphApi({ apiUrl, apiKey = null, client } = {}) {
   const sdk = client ?? new Client({
     apiUrl: resolveApiUrl(configuredUrl),
     apiKey,
+    onRequest: (url, init) => ({
+      ...init,
+      headers: withAuthorization(init.headers),
+    }),
   })
 
   async function manage(input, { signal } = {}) {
@@ -111,6 +117,16 @@ export function createLangGraphApi({ apiUrl, apiKey = null, client } = {}) {
   }
 
   return { manage, createThread, streamAssistant }
+}
+
+
+export function withAuthorization(headers) {
+  const normalizedHeaders = new Headers(headers)
+  const token = accessToken()
+  if (token) {
+    normalizedHeaders.set('Authorization', `Bearer ${token}`)
+  }
+  return normalizedHeaders
 }
 
 
